@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" fill="#F2E7D2"/>
+  <g transform="rotate(-8 32 32)">
+    <circle cx="34" cy="34" r="24" fill="#231A0E"/>
+    <circle cx="30" cy="30" r="24" fill="#feca17" stroke="#231A0E" stroke-width="3"/>
+    <text x="30" y="31" font-family="Georgia, 'Songti SC', serif" font-size="34" font-weight="900" fill="#231A0E" text-anchor="middle" dominant-baseline="central">T</text>
+  </g>
+</svg>

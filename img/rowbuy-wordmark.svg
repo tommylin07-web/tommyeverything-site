@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 220" fill="none">
+  <!-- Captain Robi × Rowbuy Mascot Wordmark -->
+  <!-- Variants: captain-robi.png (no text) / captain-robi-wordmark.svg (with rowbuy.com) -->
+
+  <!-- Mascot — Captain Robi -->
+  <image href="captain-robi.png" x="8" y="8" width="204" height="204"/>
+
+  <!-- Divider -->
+  <rect x="226" y="40" width="1.5" height="140" rx="0.75" fill="#CCCCCC"/>
+
+  <!-- Wordmark: rowbuy.com -->
+  <text x="244" y="140"
+        font-family="Inter, 'Arial Black', Arial, sans-serif"
+        font-weight="700"
+        font-size="52"
+        letter-spacing="-1.5">
+    <tspan fill="#1A1A1A">rowbuy</tspan><tspan fill="#FDAB28">.com</tspan>
+  </text>
+</svg>
