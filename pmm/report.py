@@ -13,7 +13,9 @@ def main(path="data/paper_log.csv"):
     for r in rows:
         by_ts[int(r["ts"])].append(r)
     ts = sorted(by_ts)
-    hours = (ts[-1] - ts[0]) / 3600
+    # effective time = sum of gaps between consecutive samples, each capped at 5 min, so a
+    # suspended container does not inflate the span or deflate the per-day rate
+    hours = sum(min(b - a, 300) for a, b in zip(ts, ts[1:])) / 3600
     series = [(t, sum(float(r["reward"]) for r in by_ts[t]), sum(float(r["mtm"]) for r in by_ts[t])) for t in ts]
     peak, dd = -1e9, 0.0
     for _, rw, m in series:
@@ -21,7 +23,7 @@ def main(path="data/paper_log.csv"):
         peak = max(peak, pnl); dd = min(dd, pnl - peak)
     last = by_ts[ts[-1]]
     reward = sum(float(r["reward"]) for r in last); mtm = sum(float(r["mtm"]) for r in last)
-    print(f"span {hours:.2f}h  samples {len(ts)}  reward_est {reward:.4f} (~{reward / hours * 24 if hours else 0:.2f}/day)  "
+    print(f"sampled {hours:.2f}h  samples {len(ts)}  reward_est {reward:.4f} (~{reward / hours * 24 if hours else 0:.2f}/day)  "
           f"inventory_mtm {mtm:+.3f}  net {reward + mtm:+.3f}  max_drawdown {dd:+.3f}")
     print(f"{'market':52} {'fills':>5} {'yes':>6} {'no':>6} {'reward':>7} {'mtm':>7}  quoted%")
     for m in sorted({r["market"] for r in rows}):
