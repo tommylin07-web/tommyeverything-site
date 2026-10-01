@@ -51,3 +51,15 @@ def test_kill_switch(tmp_path):
     eng.step(now=2, books={"YES": book(0.40, 0.41)}, trades_fn=None)          # filled at 0.48, now worth 0.405
     eng.step(now=3, books={"YES": book(0.40, 0.41)}, trades_fn=None)
     assert eng.halted
+
+
+def test_engine_ignores_trades_older_than_the_quote(tmp_path):
+    cfg = Config(data_dir=str(tmp_path), loop_seconds=60)
+    eng = PaperEngine(cfg, [cand()])
+    old_tape = [dict(timestamp=50, price=0.40, side="SELL", asset="YES"), dict(timestamp=60, price=0.60, side="BUY", asset="YES")]
+    eng.step(now=100, books={"YES": book(0.49, 0.51)}, trades_fn=lambda cid: old_tape)     # quote placed at t=100
+    eng.step(now=160, books={"YES": book(0.49, 0.51)}, trades_fn=lambda cid: old_tape)
+    assert eng.state.markets["cid"].fills == 0
+    new_tape = old_tape + [dict(timestamp=150, price=0.47, side="SELL", asset="YES")]
+    eng.step(now=220, books={"YES": book(0.49, 0.51)}, trades_fn=lambda cid: new_tape)
+    assert eng.state.markets["cid"].fills == 1 and eng.state.markets["cid"].yes_inv > 0

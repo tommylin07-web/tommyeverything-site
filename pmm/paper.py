@@ -29,6 +29,7 @@ class MarketState:
     reward: float = 0.0            # accrued estimated rewards
     fills: int = 0
     last_trade_ts: int = 0
+    quote_ts: int = 0              # trades before this instant can never have filled the current quote
 
 
 @dataclass
@@ -89,7 +90,7 @@ class PaperEngine:
             if ms.quote and not self.halted:
                 q = Quote(**ms.quote)
                 trades = trades_fn(cid) if trades_fn else []
-                yes_f, no_f = detect_fills(b, q, trades, c["yes"], ms.last_trade_ts)
+                yes_f, no_f = detect_fills(b, q, trades, c["yes"], max(ms.last_trade_ts, ms.quote_ts))
                 if trades:
                     ms.last_trade_ts = max(ms.last_trade_ts, max(int(t.get("timestamp", 0)) for t in trades))
                 if yes_f:
@@ -107,6 +108,7 @@ class PaperEngine:
                 nq = make_quote(mid, v, b.tick, min_size, cfg, ms.yes_inv * mid, ms.no_inv * (1 - mid))
                 ms.quote = asdict(nq) if nq else None
                 ms.quote_mid = mid
+                ms.quote_ts = int(now)
             rows.append(dict(ts=int(now), market=c["question"][:50], mid=round(mid, 4),
                              yes_bid=ms.quote and ms.quote["yes_bid"], no_bid=ms.quote and ms.quote["no_bid"],
                              size=ms.quote and ms.quote["size"], yes_inv=ms.yes_inv, no_inv=ms.no_inv,
