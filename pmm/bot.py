@@ -11,9 +11,9 @@ from .select import rank
 
 def cmd_scan(cfg: Config, n: int):
     cands = rank(cfg)
-    print(f"{'yield/d':>8} {'$/day':>7} {'cap$':>6} {'rate':>6} {'mid':>6} {'oursQ':>7} {'othQ':>8} {'Δ24h':>6} {'days':>5}  question")
+    print(f"{'yield/d':>8} {'$/day':>7} {'cap$':>6} {'rate':>6} {'mid':>6} {'oursQ':>7} {'othQ':>8} {'Δ24h':>6} {'jump':>5} {'days':>5}  question")
     for c in cands[:n]:
-        print(f"{c.yield_per_day*100:7.2f}% {c.exp_reward:7.2f} {c.capital:6.1f} {c.daily_rate:6.0f} {c.mid:6.3f} {c.ours_q:7.2f} {c.others_q:8.1f} {c.day_change:+6.2f} {c.days_to_end:5.0f}  {c.question[:60]}")
+        print(f"{c.yield_per_day*100:7.2f}% {c.exp_reward:7.2f} {c.capital:6.1f} {c.daily_rate:6.0f} {c.mid:6.3f} {c.ours_q:7.2f} {c.others_q:8.1f} {c.day_change:+6.2f} {c.jump:5.2f} {c.days_to_end:5.0f}  {c.question[:60]}")
     return cands
 
 

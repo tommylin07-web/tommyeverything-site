@@ -107,3 +107,18 @@ def test_resume_restores_state(tmp_path):
     assert eng2.state.started == eng.state.started and eng2.halted is False
     eng2.step(now=3, books={"YES": book(0.46, 0.47)}, trades_fn=None)
     assert eng2.state.markets["cid"].reward > before.reward
+
+
+def test_per_market_halt_keeps_other_markets_quoting(tmp_path):
+    cfg = Config(data_dir=str(tmp_path), market_loss_limit=3.0, daily_loss_limit=100.0)
+    other = Candidate("other", "O?", "OY", "ON", 0.5, 0.01, 0.04, 20, 100, 50, 10, 16, 40, 0.0, 30)
+    eng = PaperEngine(cfg, [cand(), other])
+    books = {"YES": book(0.49, 0.51), "OY": Book("OY", [Level(0.49, 100)], [Level(0.51, 100)], 0.01, 5)}
+    eng.step(now=1, books=books, trades_fn=None)
+    eng.step(now=2, books={"YES": book(0.46, 0.47), "OY": books["OY"]}, trades_fn=None)   # fill at 0.48
+    eng.step(now=3, books={"YES": book(0.38, 0.39), "OY": books["OY"]}, trades_fn=None)   # now worth 0.385: loss > 3
+    bad, good = eng.state.markets["cid"], eng.state.markets["other"]
+    assert bad.halted and bad.quote is None
+    assert not good.halted and good.quote and not eng.halted
+    eng.step(now=4, books={"YES": book(0.49, 0.51), "OY": books["OY"]}, trades_fn=None)   # recovery does not re-arm
+    assert bad.halted and bad.quote is None

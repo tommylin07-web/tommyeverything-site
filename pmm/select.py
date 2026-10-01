@@ -26,6 +26,7 @@ class Candidate:
     capital: float          # USDC resting in our two bids
     day_change: float
     days_to_end: float
+    jump: float = 0.0       # largest hourly move in the last week
 
     @property
     def yield_per_day(self) -> float:
@@ -74,12 +75,16 @@ def rank(cfg: Config, top_n_by_rate: int = 120) -> list[Candidate]:
         q = make_quote(mid, v, b.tick, min_size, cfg)
         if not q or not q.yes_bid or not q.no_bid:
             continue
+        hist = api.price_history(yes)
+        jump = api.max_jump(hist)
+        if len(hist) < cfg.min_history_points or jump > cfg.max_hourly_jump:
+            continue
         q1, q2 = book_q(b, v, min_size, mid)
         others = q_min(q1, q2, mid)
         ours = our_q(v, mid, q.yes_bid, q.size, 1 - q.no_bid, q.size)
         rate = float(r["total_daily_rate"])
         out.append(Candidate(m["conditionId"], m["question"], yes, no, mid, b.tick, v, min_size, rate,
                              others, ours, expected_daily_reward(rate, ours, others, cfg.max_share),
-                             q.size * (q.yes_bid + q.no_bid), float(m.get("oneDayPriceChange") or 0), _days_to_end(m)))
+                             q.size * (q.yes_bid + q.no_bid), float(m.get("oneDayPriceChange") or 0), _days_to_end(m), jump))
     out.sort(key=lambda c: -c.yield_per_day)
     return out

@@ -30,6 +30,7 @@ class MarketState:
     fills: int = 0
     last_trade_ts: int = 0
     quote_ts: int = 0              # trades before this instant can never have filled the current quote
+    halted: bool = False           # this market tripped its own loss limit
     pending_mid: float | None = None   # candidate new mid waiting for confirmation
     pending_loops: int = 0
 
@@ -120,7 +121,11 @@ class PaperEngine:
                 ours = our_q(v, mid, q.yes_bid, q.size if q.yes_bid else 0, 1 - q.no_bid if q.no_bid else 1, q.size if q.no_bid else 0)
                 ms.reward += expected_daily_reward(c["daily_rate"], ours, q_min(q1, q2, mid), cfg.max_share) * cfg.loop_seconds / 86400
             # 3. (re)quote, with hysteresis: a moved mid must persist `requote_confirm_loops` loops
-            if not self.halted:
+            if not ms.halted and mtm(ms, mid) < -cfg.market_loss_limit:
+                ms.halted = True
+            if ms.halted:
+                ms.quote = None
+            elif not self.halted:
                 if spread > cfg.max_book_spread_frac * v:
                     ms.quote = None                      # book blew out: pull quotes rather than chase noise
                     ms.pending_mid, ms.pending_loops = None, 0

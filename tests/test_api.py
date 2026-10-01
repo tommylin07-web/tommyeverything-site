@@ -10,3 +10,9 @@ def test_adjusted_mid_ignores_dust():
     m2, s2 = b2.adjusted(20)
     assert abs(m2 - 0.405) < 1e-9 and abs(s2 - 0.21) < 1e-9
     assert Book("t", [Level(0.49, 3)], [Level(0.51, 100)], 0.01, 5).adjusted(20) == (None, None)
+
+
+def test_max_jump():
+    from pmm.api import max_jump
+    assert max_jump([]) == 0.0 and max_jump([0.5]) == 0.0
+    assert abs(max_jump([0.30, 0.31, 0.50, 0.48]) - 0.19) < 1e-9

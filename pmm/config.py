@@ -10,7 +10,8 @@ class Config:
     capital_per_market: float = 40.0    # max USDC resting per market (both sides combined)
     max_markets: int = 3
     max_inventory_usd: float = 30.0     # stop bidding a side once we hold this much notional of it
-    daily_loss_limit: float = 5.0       # kill switch: cancel everything if MTM loss exceeds this
+    daily_loss_limit: float = 5.0       # kill switch: cancel everything if total MTM loss exceeds this
+    market_loss_limit: float = 3.0      # stop quoting one market once its own MTM loss exceeds this
     # --- quoting ---
     quote_offset_frac: float = 0.5      # distance from midpoint as a fraction of the market's max spread
     requote_ticks: int = 2              # re-place orders when mid moves this many ticks
@@ -23,6 +24,8 @@ class Config:
     exclude_sports: bool = True
     max_share: float = 0.5             # never assume we capture more than this share of a market's daily pool
     max_book_spread_frac: float = 3.0   # skip markets whose live spread is wider than this many max-spreads (mid is noise)
+    max_hourly_jump: float = 0.08       # skip markets whose price moved more than this in any hour of the last week
+    min_history_points: int = 24        # ...and markets too new to judge
     exclude_ids: tuple = ()             # condition ids never to trade (PMM_EXCLUDE=a,b,c)
     mid_lo: float = 0.08
     mid_hi: float = 0.92
@@ -36,7 +39,7 @@ class Config:
         c = cls()
         c.private_key = os.environ.get("POLY_PRIVATE_KEY")
         c.wallet = os.environ.get("POLY_WALLET") or os.environ.get("POLY_FUNDER")
-        for k in ("total_capital", "capital_per_market", "max_inventory_usd", "daily_loss_limit", "quote_offset_frac", "min_daily_rate"):
+        for k in ("total_capital", "capital_per_market", "max_inventory_usd", "daily_loss_limit", "market_loss_limit", "quote_offset_frac", "min_daily_rate", "max_hourly_jump"):
             v = os.environ.get("PMM_" + k.upper())
             if v:
                 setattr(c, k, float(v))

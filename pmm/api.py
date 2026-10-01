@@ -122,6 +122,17 @@ def recent_trades(condition_id: str, limit: int = 50) -> list[dict]:
     return _get(f"{DATA}/trades", {"market": condition_id, "limit": limit})
 
 
+def price_history(token_id: str, interval: str = "1w", fidelity: int = 60) -> list[float]:
+    """Hourly (fidelity=60) prices over the last week, oldest first."""
+    raw = _get(f"{CLOB}/prices-history", {"market": token_id, "interval": interval, "fidelity": fidelity})
+    return [float(x["p"]) for x in raw.get("history", [])]
+
+
+def max_jump(prices: list[float]) -> float:
+    """Largest absolute move between consecutive samples."""
+    return max((abs(b - a) for a, b in zip(prices, prices[1:])), default=0.0)
+
+
 def token_ids(market: dict) -> tuple[str, str]:
     yes, no = json.loads(market["clobTokenIds"])
     return yes, no
