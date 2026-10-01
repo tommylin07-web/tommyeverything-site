@@ -24,8 +24,9 @@ class Config:
     exclude_sports: bool = True
     max_share: float = 0.5             # never assume we capture more than this share of a market's daily pool
     max_book_spread_frac: float = 3.0   # skip markets whose live spread is wider than this many max-spreads (mid is noise)
-    max_hourly_jump: float = 0.08       # skip markets whose price moved more than this in any hour of the last week
-    min_history_points: int = 24        # ...and markets too new to judge
+    max_hourly_jump: float = 0.10       # skip markets whose price moved more than this in any hour of the last week
+    min_history_points: int = 48        # ...and markets too new to judge (two days of hourly points)
+    scan_pool: int = 700                # how many reward markets (by daily rate) to examine
     exclude_ids: tuple = ()             # condition ids never to trade (PMM_EXCLUDE=a,b,c)
     mid_lo: float = 0.08
     mid_hi: float = 0.92

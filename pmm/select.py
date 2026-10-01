@@ -53,7 +53,8 @@ def passes_filters(m: dict, cfg: Config) -> bool:
     return True
 
 
-def rank(cfg: Config, top_n_by_rate: int = 120) -> list[Candidate]:
+def rank(cfg: Config, top_n_by_rate: int | None = None) -> list[Candidate]:
+    top_n_by_rate = top_n_by_rate or cfg.scan_pool
     rewards = [r for r in api.current_rewards() if float(r["total_daily_rate"]) >= cfg.min_daily_rate and float(r["rewards_max_spread"]) > 0]
     rewards.sort(key=lambda r: -float(r["total_daily_rate"]))
     rewards = rewards[:top_n_by_rate]
