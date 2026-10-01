@@ -18,7 +18,7 @@ def test_rank_filters_and_orders(monkeypatch):
     monkeypatch.setattr(api, "current_rewards", lambda: rewards)
     monkeypatch.setattr(api, "gamma_markets", lambda ids: [m for m in markets if m["conditionId"] in ids])
     monkeypatch.setattr(api, "get_books", lambda ids: {k: v for k, v in books.items() if k in ids})
-    monkeypatch.setattr(api, "price_history", lambda tok: [0.5, 0.51, 0.49] * 10)
+    monkeypatch.setattr(api, "price_history", lambda tok: [0.5, 0.51, 0.49] * 20)
     out = select.rank(Config(min_daily_rate=5))
     assert [c.condition_id for c in out] == ["B", "A"]
     assert [c.condition_id for c in select.rank(Config(min_daily_rate=5, exclude_ids=("B",)))] == ["A"]          # sports excluded, low-rate excluded, thin book first
@@ -32,7 +32,7 @@ def test_rank_skips_books_wider_than_band(monkeypatch):
     monkeypatch.setattr(api, "current_rewards", lambda: rewards)
     monkeypatch.setattr(api, "gamma_markets", lambda ids: [m])
     monkeypatch.setattr(api, "get_books", lambda ids: {"Wy": Book("Wy", [Level(0.30, 50)], [Level(0.70, 50)], 0.01, 5)})
-    monkeypatch.setattr(api, "price_history", lambda tok: [0.5] * 30)
+    monkeypatch.setattr(api, "price_history", lambda tok: [0.5] * 60)
     assert select.rank(Config(min_daily_rate=5)) == []
 
 
@@ -43,10 +43,10 @@ def test_rank_skips_jumpy_or_young_markets(monkeypatch):
     monkeypatch.setattr(api, "current_rewards", lambda: rewards)
     monkeypatch.setattr(api, "gamma_markets", lambda ids: [m])
     monkeypatch.setattr(api, "get_books", lambda ids: {"Jy": Book("Jy", [Level(0.49, 50)], [Level(0.51, 50)], 0.01, 5)})
-    monkeypatch.setattr(api, "price_history", lambda tok: [0.3] * 20 + [0.5] * 20)      # one 20c hourly jump
+    monkeypatch.setattr(api, "price_history", lambda tok: [0.3] * 30 + [0.5] * 30)      # one 20c hourly jump
     assert select.rank(Config(min_daily_rate=5)) == []
     monkeypatch.setattr(api, "price_history", lambda tok: [0.5, 0.52] * 5)               # only 10 points of history
     assert select.rank(Config(min_daily_rate=5)) == []
-    monkeypatch.setattr(api, "price_history", lambda tok: [0.5, 0.52] * 20)
+    monkeypatch.setattr(api, "price_history", lambda tok: [0.5, 0.52] * 30)
     out = select.rank(Config(min_daily_rate=5))
     assert len(out) == 1 and abs(out[0].jump - 0.02) < 1e-9
