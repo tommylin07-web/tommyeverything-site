@@ -57,7 +57,7 @@ def rank(cfg: Config, top_n_by_rate: int = 120) -> list[Candidate]:
     rewards.sort(key=lambda r: -float(r["total_daily_rate"]))
     rewards = rewards[:top_n_by_rate]
     rw = {r["condition_id"]: r for r in rewards}
-    markets = [m for m in api.gamma_markets(list(rw)) if passes_filters(m, cfg)]
+    markets = [m for m in api.gamma_markets(list(rw)) if passes_filters(m, cfg) and m["conditionId"] not in cfg.exclude_ids]
     books = api.get_books([api.token_ids(m)[0] for m in markets])
     out = []
     for m in markets:

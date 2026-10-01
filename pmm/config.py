@@ -23,6 +23,7 @@ class Config:
     exclude_sports: bool = True
     max_share: float = 0.5             # never assume we capture more than this share of a market's daily pool
     max_book_spread_frac: float = 3.0   # skip markets whose live spread is wider than this many max-spreads (mid is noise)
+    exclude_ids: tuple = ()             # condition ids never to trade (PMM_EXCLUDE=a,b,c)
     mid_lo: float = 0.08
     mid_hi: float = 0.92
     # --- live credentials (env only; never written to disk) ---
@@ -39,6 +40,8 @@ class Config:
             v = os.environ.get("PMM_" + k.upper())
             if v:
                 setattr(c, k, float(v))
+        if os.environ.get("PMM_EXCLUDE"):
+            c.exclude_ids = tuple(x.strip() for x in os.environ["PMM_EXCLUDE"].split(",") if x.strip())
         for k in ("max_markets", "loop_seconds", "requote_ticks"):
             v = os.environ.get("PMM_" + k.upper())
             if v:

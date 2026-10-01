@@ -19,7 +19,8 @@ def test_rank_filters_and_orders(monkeypatch):
     monkeypatch.setattr(api, "gamma_markets", lambda ids: [m for m in markets if m["conditionId"] in ids])
     monkeypatch.setattr(api, "get_books", lambda ids: {k: v for k, v in books.items() if k in ids})
     out = select.rank(Config(min_daily_rate=5))
-    assert [c.condition_id for c in out] == ["B", "A"]          # sports excluded, low-rate excluded, thin book first
+    assert [c.condition_id for c in out] == ["B", "A"]
+    assert [c.condition_id for c in select.rank(Config(min_daily_rate=5, exclude_ids=("B",)))] == ["A"]          # sports excluded, low-rate excluded, thin book first
     assert out[0].exp_reward > out[1].exp_reward
 
 
