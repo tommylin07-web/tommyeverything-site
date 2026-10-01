@@ -91,3 +91,19 @@ def test_quotes_pulled_when_book_blows_out(tmp_path):
     assert ms.quote is None
     eng.step(now=3, books={"YES": book(0.49, 0.51)}, trades_fn=None)
     assert ms.quote and ms.quote_mid == 0.50
+
+
+def test_resume_restores_state(tmp_path):
+    cfg = Config(data_dir=str(tmp_path), loop_seconds=60)
+    eng = PaperEngine(cfg, [cand()])
+    eng.step(now=1, books={"YES": book(0.49, 0.51)}, trades_fn=None)
+    eng.step(now=2, books={"YES": book(0.46, 0.47)}, trades_fn=None)          # fill + reward accrued
+    before = eng.state.markets["cid"]
+    assert PaperEngine.resume(Config(data_dir=str(tmp_path / "nope"))) is None
+    eng2 = PaperEngine.resume(cfg)
+    after = eng2.state.markets["cid"]
+    assert (after.yes_inv, after.cost, after.reward, after.fills, after.quote, after.quote_ts) == \
+           (before.yes_inv, before.cost, before.reward, before.fills, before.quote, before.quote_ts)
+    assert eng2.state.started == eng.state.started and eng2.halted is False
+    eng2.step(now=3, books={"YES": book(0.46, 0.47)}, trades_fn=None)
+    assert eng2.state.markets["cid"].reward > before.reward

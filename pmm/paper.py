@@ -75,6 +75,19 @@ class PaperEngine:
             self.state.markets[c.condition_id] = MarketState(cand=asdict(c))
         self.halted = False
 
+    @classmethod
+    def resume(cls, cfg: Config) -> "PaperEngine | None":
+        """Continue a previous run from data/paper_state.json (inventory, rewards, quotes and tape watermarks)."""
+        path = os.path.join(cfg.data_dir, "paper_state.json")
+        if not os.path.exists(path):
+            return None
+        raw = json.load(open(path))
+        eng = cls(cfg, [])
+        eng.state.started = raw["started"]
+        eng.halted = raw["halted"]
+        eng.state.markets = {k: MarketState(**v) for k, v in raw["markets"].items()}
+        return eng
+
     # ---- one iteration -------------------------------------------------
     def step(self, now: float | None = None, books: dict[str, api.Book] | None = None, trades_fn=api.recent_trades) -> list[dict]:
         now = now or time.time()

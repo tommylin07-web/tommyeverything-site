@@ -17,12 +17,16 @@ def cmd_scan(cfg: Config, n: int):
     return cands
 
 
-def cmd_paper(cfg: Config, hours: float):
+def cmd_paper(cfg: Config, hours: float, resume: bool = False):
     from .paper import PaperEngine
-    cands = cmd_scan(cfg, cfg.max_markets)
-    if not cands:
-        print("no candidates"); return
-    eng = PaperEngine(cfg, cands)
+    eng = PaperEngine.resume(cfg) if resume else None
+    if eng:
+        print(f"resumed: {len(eng.state.markets)} markets, {eng.summary()}")
+    else:
+        cands = cmd_scan(cfg, cfg.max_markets)
+        if not cands:
+            print("no candidates"); return
+        eng = PaperEngine(cfg, cands)
     stop = {"flag": False}
     signal.signal(signal.SIGINT, lambda *_: stop.__setitem__("flag", True))
     deadline = time.time() + hours * 3600
@@ -85,14 +89,14 @@ def main(argv=None):
     p = argparse.ArgumentParser(prog="pmm")
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("scan"); s.add_argument("-n", type=int, default=15)
-    pp = sub.add_parser("paper"); pp.add_argument("--hours", type=float, default=1.0)
+    pp = sub.add_parser("paper"); pp.add_argument("--hours", type=float, default=1.0); pp.add_argument("--resume", action="store_true")
     lv = sub.add_parser("live"); lv.add_argument("--hours", type=float, default=1.0)
     a = p.parse_args(argv)
     cfg = Config.from_env()
     if a.cmd == "scan":
         cmd_scan(cfg, a.n)
     elif a.cmd == "paper":
-        cmd_paper(cfg, a.hours)
+        cmd_paper(cfg, a.hours, a.resume)
     else:
         cmd_live(cfg, a.hours)
 
