@@ -30,6 +30,8 @@ class MarketState:
     fills: int = 0
     last_trade_ts: int = 0
     quote_ts: int = 0              # trades before this instant can never have filled the current quote
+    pending_mid: float | None = None   # candidate new mid waiting for confirmation
+    pending_loops: int = 0
 
 
 @dataclass
@@ -83,9 +85,10 @@ class PaperEngine:
         for cid, ms in self.state.markets.items():
             c = ms.cand
             b = books.get(c["yes"])
-            if not b or b.mid is None:
+            v, min_size = c["max_spread"], c["min_size"]
+            mid, spread = b.adjusted(min_size) if b else (None, None)
+            if mid is None:
                 continue
-            mid, v, min_size = b.mid, c["max_spread"], c["min_size"]
             # 1. fills against the quote that was resting during the last interval
             if ms.quote and not self.halted:
                 q = Quote(**ms.quote)
@@ -103,12 +106,26 @@ class PaperEngine:
                 q1, q2 = book_q(b, v, min_size)
                 ours = our_q(v, mid, q.yes_bid, q.size if q.yes_bid else 0, 1 - q.no_bid if q.no_bid else 1, q.size if q.no_bid else 0)
                 ms.reward += expected_daily_reward(c["daily_rate"], ours, q_min(q1, q2, mid), cfg.max_share) * cfg.loop_seconds / 86400
-            # 3. (re)quote
-            if not self.halted and (ms.quote is None or abs(mid - (ms.quote_mid or mid)) >= cfg.requote_ticks * b.tick):
-                nq = make_quote(mid, v, b.tick, min_size, cfg, ms.yes_inv * mid, ms.no_inv * (1 - mid))
-                ms.quote = asdict(nq) if nq else None
-                ms.quote_mid = mid
-                ms.quote_ts = int(now)
+            # 3. (re)quote, with hysteresis: a moved mid must persist `requote_confirm_loops` loops
+            if not self.halted:
+                if spread > cfg.max_book_spread_frac * v:
+                    ms.quote = None                      # book blew out: pull quotes rather than chase noise
+                    ms.pending_mid, ms.pending_loops = None, 0
+                else:
+                    moved = ms.quote is not None and abs(mid - (ms.quote_mid or mid)) >= cfg.requote_ticks * b.tick
+                    if moved:
+                        if ms.pending_mid is not None and abs(mid - ms.pending_mid) < cfg.requote_ticks * b.tick:
+                            ms.pending_loops += 1
+                        else:
+                            ms.pending_mid, ms.pending_loops = mid, 1
+                    else:
+                        ms.pending_mid, ms.pending_loops = None, 0
+                    if ms.quote is None or (moved and ms.pending_loops >= cfg.requote_confirm_loops):
+                        nq = make_quote(mid, v, b.tick, min_size, cfg, ms.yes_inv * mid, ms.no_inv * (1 - mid))
+                        ms.quote = asdict(nq) if nq else None
+                        ms.quote_mid = mid
+                        ms.quote_ts = int(now)
+                        ms.pending_mid, ms.pending_loops = None, 0
             rows.append(dict(ts=int(now), market=c["question"][:50], mid=round(mid, 4),
                              yes_bid=ms.quote and ms.quote["yes_bid"], no_bid=ms.quote and ms.quote["no_bid"],
                              size=ms.quote and ms.quote["size"], yes_inv=ms.yes_inv, no_inv=ms.no_inv,

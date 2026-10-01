@@ -60,21 +60,22 @@ def cmd_live(cfg: Config, hours: float):
             books = api.get_books([c.yes for c in live.values()])
             for cid, c in live.items():
                 b = books.get(c.yes)
-                if not b or b.mid is None:
+                mid, spread = b.adjusted(c.min_size) if b else (None, None)
+                if mid is None:
                     continue
                 prev_mid = quoted.get(cid, (None, []))[0]
-                if prev_mid is not None and abs(b.mid - prev_mid) < cfg.requote_ticks * b.tick:
+                if prev_mid is not None and abs(mid - prev_mid) < cfg.requote_ticks * b.tick:
                     continue
                 ex.cancel_market(cid)
-                q = make_quote(b.mid, c.max_spread, b.tick, c.min_size, cfg)
+                q = None if spread > cfg.max_book_spread_frac * c.max_spread else make_quote(mid, c.max_spread, b.tick, c.min_size, cfg)
                 ids = []
                 if q:
                     if q.yes_bid:
                         ids.append(ex.place_bid(c.yes, q.yes_bid, q.size))
                     if q.no_bid:
                         ids.append(ex.place_bid(c.no, q.no_bid, q.size))
-                quoted[cid] = (b.mid, ids)
-                print(f"[{time.strftime('%H:%M:%S')}] {c.question[:40]} mid={b.mid:.3f} quoted={q}", flush=True)
+                quoted[cid] = (mid, ids)
+                print(f"[{time.strftime('%H:%M:%S')}] {c.question[:40]} mid={mid:.3f} quoted={q}", flush=True)
             time.sleep(cfg.loop_seconds)
     finally:
         print("cancelling all resting orders:", ex.cancel_all())

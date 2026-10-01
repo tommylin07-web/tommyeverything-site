@@ -10,8 +10,8 @@ def cand(mid=0.5):
     return Candidate("cid", "Q?", "YES", "NO", mid, 0.01, 0.04, 20, 100, 50, 10, 16, 40, 0.0, 30)
 
 
-def book(bid, ask):
-    return Book("YES", [Level(bid, 100)], [Level(ask, 100)], 0.01, 5)
+def book(bid, ask, size=100):
+    return Book("YES", [Level(bid, size)], [Level(ask, size)], 0.01, 5)
 
 
 def test_detect_fills_from_book_cross():
@@ -63,3 +63,31 @@ def test_engine_ignores_trades_older_than_the_quote(tmp_path):
     new_tape = old_tape + [dict(timestamp=150, price=0.47, side="SELL", asset="YES")]
     eng.step(now=220, books={"YES": book(0.49, 0.51)}, trades_fn=lambda cid: new_tape)
     assert eng.state.markets["cid"].fills == 1 and eng.state.markets["cid"].yes_inv > 0
+
+
+def test_requote_needs_confirmation_and_ignores_dust(tmp_path):
+    cfg = Config(data_dir=str(tmp_path), requote_confirm_loops=2)
+    eng = PaperEngine(cfg, [cand()])
+    ms = eng.state.markets["cid"]
+    eng.step(now=1, books={"YES": book(0.49, 0.51)}, trades_fn=None)
+    assert ms.quote_mid == 0.50
+    # a dust order pulls the raw mid but not the adjusted one: nothing happens
+    eng.step(now=2, books={"YES": Book("YES", [Level(0.49, 100)], [Level(0.50, 5), Level(0.51, 100)], 0.01, 5)}, trades_fn=None)
+    assert ms.quote_mid == 0.50 and ms.pending_mid is None and ms.fills == 0
+    # a real move (2 ticks, not through our prices) must persist two loops before we follow it
+    eng.step(now=3, books={"YES": book(0.47, 0.49)}, trades_fn=None)
+    assert ms.quote_mid == 0.50 and ms.pending_loops == 1 and ms.fills == 0
+    eng.step(now=4, books={"YES": book(0.47, 0.49)}, trades_fn=None)
+    assert abs(ms.quote_mid - 0.48) < 1e-9 and ms.pending_loops == 0
+
+
+def test_quotes_pulled_when_book_blows_out(tmp_path):
+    cfg = Config(data_dir=str(tmp_path), max_book_spread_frac=3.0)
+    eng = PaperEngine(cfg, [cand()])
+    ms = eng.state.markets["cid"]
+    eng.step(now=1, books={"YES": book(0.49, 0.51)}, trades_fn=None)
+    assert ms.quote
+    eng.step(now=2, books={"YES": book(0.30, 0.70)}, trades_fn=None)     # 40c wide vs 4c band
+    assert ms.quote is None
+    eng.step(now=3, books={"YES": book(0.49, 0.51)}, trades_fn=None)
+    assert ms.quote and ms.quote_mid == 0.50

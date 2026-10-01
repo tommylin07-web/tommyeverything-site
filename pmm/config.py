@@ -14,6 +14,7 @@ class Config:
     # --- quoting ---
     quote_offset_frac: float = 0.5      # distance from midpoint as a fraction of the market's max spread
     requote_ticks: int = 2              # re-place orders when mid moves this many ticks
+    requote_confirm_loops: int = 2      # ...and the move has persisted for this many consecutive loops
     loop_seconds: int = 30
     # --- market selection ---
     min_daily_rate: float = 5.0         # ignore markets with less than this USDC/day in rewards

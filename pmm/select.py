@@ -63,21 +63,22 @@ def rank(cfg: Config, top_n_by_rate: int = 120) -> list[Candidate]:
     for m in markets:
         yes, no = api.token_ids(m)
         b = books.get(yes)
-        if not b or b.mid is None or not (cfg.mid_lo <= b.mid <= cfg.mid_hi):
-            continue
         r = rw[m["conditionId"]]
         v = float(r["rewards_max_spread"]) / 100
-        if b.best_ask - b.best_bid > cfg.max_book_spread_frac * v:
+        min_size = max(float(r["rewards_min_size"]), b.min_size) if b else 0
+        mid, spread = b.adjusted(min_size) if b else (None, None)
+        if mid is None or not (cfg.mid_lo <= mid <= cfg.mid_hi):
             continue
-        min_size = max(float(r["rewards_min_size"]), b.min_size)
-        q = make_quote(b.mid, v, b.tick, min_size, cfg)
+        if spread > cfg.max_book_spread_frac * v:
+            continue
+        q = make_quote(mid, v, b.tick, min_size, cfg)
         if not q or not q.yes_bid or not q.no_bid:
             continue
-        q1, q2 = book_q(b, v, min_size)
-        others = q_min(q1, q2, b.mid)
-        ours = our_q(v, b.mid, q.yes_bid, q.size, 1 - q.no_bid, q.size)
+        q1, q2 = book_q(b, v, min_size, mid)
+        others = q_min(q1, q2, mid)
+        ours = our_q(v, mid, q.yes_bid, q.size, 1 - q.no_bid, q.size)
         rate = float(r["total_daily_rate"])
-        out.append(Candidate(m["conditionId"], m["question"], yes, no, b.mid, b.tick, v, min_size, rate,
+        out.append(Candidate(m["conditionId"], m["question"], yes, no, mid, b.tick, v, min_size, rate,
                              others, ours, expected_daily_reward(rate, ours, others, cfg.max_share),
                              q.size * (q.yes_bid + q.no_bid), float(m.get("oneDayPriceChange") or 0), _days_to_end(m)))
     out.sort(key=lambda c: -c.yield_per_day)

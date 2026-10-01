@@ -68,6 +68,15 @@ class Book:
             return None
         return (self.best_bid + self.best_ask) / 2
 
+    def adjusted(self, min_size: float) -> tuple[float | None, float | None]:
+        """(mid, spread) ignoring levels below `min_size`: Polymarket's size-cutoff-adjusted midpoint.
+        A 5-share order should not be allowed to move where we quote."""
+        bids = [l.price for l in self.bids if l.size >= min_size]
+        asks = [l.price for l in self.asks if l.size >= min_size]
+        if not bids or not asks:
+            return None, None
+        return (bids[0] + asks[0]) / 2, asks[0] - bids[0]
+
 
 def parse_book(raw: dict) -> Book:
     bids = sorted((Level(float(x["price"]), float(x["size"])) for x in raw.get("bids", [])), key=lambda l: -l.price)
